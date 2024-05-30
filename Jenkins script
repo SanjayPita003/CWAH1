@@ -43,7 +43,7 @@ pipeline {
             }
         }
 
-        stage('Purge $AUDIT.EMANR') {
+        stage('Purge $AUDIT.EMANC') {
             steps {
                 sh "ssh -i ${env.SSH_KEY} rc.mgr@cwah1 'V $AUDIT.EMANC; PURGE *; FI'"
             }
@@ -55,7 +55,7 @@ pipeline {
             }
         }
 
-        stage('Install EMANRS on rc.mgr@cwah1') {
+        stage('Install EMANCS on rc.mgr@cwah1') {
             steps {
                 sh "ssh -i ${env.SSH_KEY} rc.mgr@cwah1 'V $AUDIT.EMANCS; INSTALL EMANCS EMANC'"
             }
