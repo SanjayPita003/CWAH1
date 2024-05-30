@@ -6,10 +6,10 @@ pipeline {
     }
 
     stages {
-        stage('Check Packages on chi-trng1 and chi-trng2') {
+        stage('Check Packages on ny-trng1 and ny-trng2') {
             steps {
                 script {
-                    def hosts = ['chi-trng1', 'chi-trng2']
+                    def hosts = ['ny-trng1', 'ny-trng2']
                     def packages = [
                         "/L/ctc_data/ctc_data.G007.06",
                         "/L/ctcws/ctcws.38.32",
@@ -25,47 +25,47 @@ pipeline {
             }
         }
 
-        stage('Execute Commands on prodcn.user1@cnd') {
+        stage('Execute Commands on prodcn.user1@cwah1') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} prodcn.user1@cnd 'EMANR RP1; DE'"
+                sh "ssh -i ${env.SSH_KEY} prodcw.user1@cwah1 'EMANC CP1; DE'"
             }
         }
 
-        stage('Execute Commands on train.trning@cnd1') {
+        stage('Execute Commands on train.trning@cwah1') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} train.trning@cnd1 'EMANR RT2; DE'"
+                sh "ssh -i ${env.SSH_KEY} train.trning@cwah1 'EMANC CT2; DE'"
             }
         }
 
-        stage('Execute Commands on rc.mgr@cnd1 - EMANR RRA') {
+        stage('Execute Commands on rc.mgr@cwah1') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} rc.mgr@cnd1 'EMANR RRA; DE'"
+                sh "ssh -i ${env.SSH_KEY} rc.mgr@cwah1 'EMANC CRA; DE'"
             }
         }
 
         stage('Purge $AUDIT.EMANR') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} rc.mgr@cnd1 'V \$AUDIT.EMANR; PURGE *; FI'"
+                sh "ssh -i ${env.SSH_KEY} rc.mgr@cwah1 'V $AUDIT.EMANC; PURGE *; FI'"
             }
         }
 
-        stage('Sanity Check on rc.xfer@cnd1') {
+        stage('Sanity Check on rc.xfer@cwah1') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} rc.xfer@cnd1 'SANITY ($EXDEV3 - Required: State = STARTED, Status = READY)'"
+                sh "ssh -i ${env.SSH_KEY} rc.xfer@cwah1 'SANITY ($EXDEV3 - Required: State = STARTED, Status = READY)'"
             }
         }
 
-        stage('Install EMANRS on rc.mgr@cnd1') {
+        stage('Install EMANRS on rc.mgr@cwah1') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} rc.mgr@cnd1 'V \$AUDIT.EMANRS; INSTALL EMANRS EMANR'"
+                sh "ssh -i ${env.SSH_KEY} rc.mgr@cwah1 'V $AUDIT.EMANCS; INSTALL EMANCS EMANC'"
             }
         }
 
-        stage('Purge and Edit Profiles on rc.xfer@cnd1') {
+        stage('Purge and Edit Profiles on rc.xfer@cwah1') {
             steps {
                 sh """
-                ssh -i ${env.SSH_KEY} rc.xfer@cnd1 <<EOF
-                    V \$AUDIT.EMANR
+                ssh -i ${env.SSH_KEY} rc.xfer@cwah1 <<EOF
+                    V \$AUDIT.EMANC
                     PURGE PROFILES
                     FUP DUP EMANP.PROFILES,*
                     EDIT PROFILES
