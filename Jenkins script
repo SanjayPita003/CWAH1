@@ -1,77 +1,96 @@
+
 pipeline {
     agent any
-
     environment {
-        SSH_KEY = credentials('tlavorS21$') // Replace 'ssh-key-id' with your Jenkins credential ID
+        // Define the credentials ID you will use in Jenkins for SSH
+        SSH_CREDENTIALS_ID = 'ssh-credentials-id'
     }
-
     stages {
-        stage('Check Packages on ny-trng1 and ny-trng2') {
+        stage('Check Data Package') {
             steps {
                 script {
-                    def hosts = ['ny-trng1', 'ny-trng2']
-                    def packages = [
-                        "/L/ctc_data/ctc_data.G007.06",
-                        "/L/ctcws/ctcws.38.32",
-                        "/L/gds/tma.21.8"
-                    ]
-
-                    for (host in hosts) {
-                        for (pkg in packages) {
-                            sh "ssh -i ${env.SSH_KEY} root@${host} ls -ld ${pkg}"
-                        }
+                    def servers = ['chi-trng1', 'chi-trng2']
+                    servers.each { server ->
+                        sshCommand remote: server, command: 'ls -ld /L/ctc_data/ctc_data.G007.06'
                     }
                 }
             }
         }
-
-        stage('Execute Commands on prodcn.user1@cwah1') {
+        stage('Check Workstation Package') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} prodcw.user1@cwah1 'EMANC CP1; DE'"
+                script {
+                    def servers = ['chi-trng1', 'chi-trng2']
+                    servers.each { server ->
+                        sshCommand remote: server, command: 'ls -ld /L/ctcws/ctcws.38.32'
+                    }
+                }
             }
         }
-
-        stage('Execute Commands on train.trning@cwah1') {
+        stage('Check GDS Package') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} train.trning@cwah1 'EMANC CT2; DE'"
+                script {
+                    sshCommand remote: 'chi-trng1', command: 'ls -ld /L/gds/tma.21.8'
+                    sshCommand remote: 'chi-trng2', command: 'ls -ld /L/gds/tma.21'
+                }
             }
         }
-
-        stage('Execute Commands on rc.mgr@cwah1') {
+        stage('Step 1.3') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} rc.mgr@cwah1 'EMANC CRA; DE'"
+                script {
+                    sshCommand remote: 'train.trning@cnd1', command: 'EMANR RT2\nDE'
+                }
             }
         }
-
-        stage('Purge $AUDIT.EMANC') {
+        stage('Step 1.4') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} rc.mgr@cwah1 'V $AUDIT.EMANC; PURGE *; FI'"
+                script {
+                    sshCommand remote: 'rc.mgr@cnd1', command: 'EMANR RRA\nDE'
+                }
             }
         }
-
-        stage('Sanity Check on rc.xfer@cwah1') {
+        stage('Step 1.5') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} rc.xfer@cwah1 'SANITY ($EXDEV3 - Required: State = STARTED, Status = READY)'"
+                script {
+                    sshCommand remote: 'rc.mgr@cnd1', command: 'V $AUDIT.EMANR\nPURGE *\nFI'
+                }
             }
         }
-
-        stage('Install EMANCS on rc.mgr@cwah1') {
+        stage('Step 1.6') {
             steps {
-                sh "ssh -i ${env.SSH_KEY} rc.mgr@cwah1 'V $AUDIT.EMANCS; INSTALL EMANCS EMANC'"
+                script {
+                    sshCommand remote: 'rc.xfer@cnd1', command: 'SANITY\n($EXDEV3 - Required: State = STARTED, Status = READY)'
+                }
             }
         }
-
-        stage('Purge and Edit Profiles on rc.xfer@cwah1') {
+        stage('Step 1.7') {
             steps {
-                sh """
-                ssh -i ${env.SSH_KEY} rc.xfer@cwah1 <<EOF
-                    V \$AUDIT.EMANC
-                    PURGE PROFILES
-                    FUP DUP EMANP.PROFILES,*
-                    EDIT PROFILES
-                EOF
-                """
+                script {
+                    sshCommand remote: 'rc.mgr@cnd1', command: 'V $AUDIT.EMANRS\nINSTALL EMANRS EMANR'
+                }
             }
         }
+        stage('Step 1.8') {
+            steps {
+                script {
+                    sshCommand remote: 'rc.xfer@cnd1', command: '''\
+V $AUDIT.EMANR
+PURGE PROFILES
+FUP DUP EMANP.PROFILES,*
+EDIT PROFILES
+'''
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Script execution completed.'
+        }
+    }
+}
+
+def sshCommand(Map params) {
+    sshagent(credentials: [env.SSH_CREDENTIALS_ID]) {
+        sh "ssh -o StrictHostKeyChecking=no ${params.remote} '${params.command}'"
     }
 }
