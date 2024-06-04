@@ -9,7 +9,7 @@ pipeline {
         stage('Check Data Package') {
             steps {
                 script {
-                    def servers = ['chi-trng1', 'chi-trng2']
+                    def servers = ['ny-trng1', 'ny-trng2']
                     servers.each { server ->
                         sshCommand remote: server, command: 'ls -ld /L/ctc_data/ctc_data.G007.06'
                     }
